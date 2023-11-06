@@ -1,0 +1,8 @@
+# PDF reading
+Pillow~=10.1.0
+PyMuPDF==1.23.5
+pyzbar~=0.1.9
+
+# Selenium
+selenium~=4.15.2
+webdriver-manager~=4.0.1
