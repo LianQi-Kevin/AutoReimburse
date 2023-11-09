@@ -6,3 +6,8 @@ pyzbar~=0.1.9
 # Selenium
 selenium~=4.15.2
 webdriver-manager~=4.0.1
+
+# verify-code preprocess
+opencv-python~=4.8.1.78
+numpy~=1.26.1
+requests~=2.31.0

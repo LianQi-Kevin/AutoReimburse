@@ -2,3 +2,4 @@
 username = "username"
 password = "password"
 softid = "softid"
+softkey = "softkey"
