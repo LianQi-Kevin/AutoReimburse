@@ -10,20 +10,19 @@ from tools.utils import calculate_md5, image_to_base64
 IMG_DETECT_URL = "http://upload.chaojiying.net/Upload/Processing.php"
 WRONG_REPORT_URL = "http://upload.chaojiying.net/Upload/Report.php"
 SCORE_QUERY_URL = "http://upload.chaojiying.net/Upload/GetScore.php"
-# TYPE_ID = 1902
-TYPE_ID = 5000
-
-log_set(logging.DEBUG)
+# TYPE_ID = 1902    # 4-6位英文数字
+TYPE_ID = 5000    # 中英文数字自适应
 
 
-def img_detect(img_path: str):
+def img_detect(img_b64: str):
     """验证码识别"""
     # create requests body
     body = json.dumps({"user": username, "pass2": calculate_md5(password), "softid": softid, "codetype": TYPE_ID,
-                       "file_base64": image_to_base64(img_path)})
+                       "file_base64": img_b64})
     headers = {"Content-Type": "application/json"}
 
     # request
+    logging.info(f"Create ChaoJiYing captcha request, body: {body}")
     response = requests.request("POST", IMG_DETECT_URL, headers=headers, data=body)
     logging.debug(response.status_code)
 
@@ -66,6 +65,7 @@ def wrong_report(pic_id: str):
 
 
 if __name__ == '__main__':
-    img_detect("../examples/verify_codes/black.png")
-    img_detect("../examples/verify_codes/black_write.png")
+    log_set(logging.DEBUG)
+    img_detect(image_to_base64("../examples/verify_codes/black.png"))
+    img_detect(image_to_base64("../examples/verify_codes/black_write.png"))
     get_score()

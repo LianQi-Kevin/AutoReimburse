@@ -35,9 +35,8 @@ def decode_from_path(path: str) -> list:
                 code_data = decode_QRcode(f.read()).split(",")
                 f.close()
         body = {"filename": os.path.basename(decode_path), "invoice_type": code_data[1], "invoice_code": code_data[2],
-                "invoice_id": code_data[3], "invoice_amount": code_data[4], "invoice_data": code_data[5],
+                "invoice_id": code_data[3], "invoice_amount": code_data[4], "invoice_date": code_data[5],
                 "invoice_verify": code_data[6]}
-        print(body)
         result.append(body)
     return result
 
