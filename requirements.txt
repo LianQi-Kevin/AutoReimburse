@@ -1,5 +1,5 @@
 # PDF reading
-Pillow~=10.1.0
+Pillow
 PyMuPDF==1.23.5
 pyzbar~=0.1.9
 
@@ -9,5 +9,5 @@ webdriver-manager~=4.0.1
 
 # verify-code preprocess
 opencv-python~=4.8.1.78
-numpy~=1.26.1
-requests~=2.31.0
+numpy
+requests
