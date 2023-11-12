@@ -66,7 +66,7 @@ def get_yzm_image_src(driver: webdriver.Chrome) -> str:
 def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
     """验证码相关操作"""
     # 获取b64并提取color字段
-    logging.info(f"Start to fix yzm, old_b64: {OLD_YZM_B64}")
+    logging.info(f"Start to fix yzm")
     yzm_b64 = get_yzm_image_src(driver)
     if check_element_exists(driver, "#yzminfo > font", By.CSS_SELECTOR):
         color = driver.find_element(By.CSS_SELECTOR, "#yzminfo > font").get_attribute("color")
@@ -92,6 +92,17 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
         ActionChains(driver).move_to_element(driver.find_element(By.ID, "popup_ok")).click().perform()
         time.sleep(0.5)
         return fix_yzm(driver)
+
+
+def get_fp(driver: webdriver.Chrome, invoice_msg: dict):
+    """提取发票验证页信息"""
+    # 进入iframe并截图
+    driver.switch_to.frame(driver.find_element(By.ID, "dialog-body"))
+    content = driver.find_element(By.ID, "content")
+
+    verify_res = content.screenshot_as_base64
+
+    # get other info
 
 
 def set_driver(headless_mode: bool = False, auto_detach: bool = False) -> webdriver.Chrome:
@@ -126,7 +137,7 @@ def set_driver(headless_mode: bool = False, auto_detach: bool = False) -> webdri
 
 
 def decode_URL(invoice_msg: dict):
-    print(invoice_msg)
+    logging.info(f"invoice_msg: {invoice_msg}")
     # open URL
     browser = set_driver(False)
     browser.get(BASE_URL)
@@ -141,14 +152,13 @@ def decode_URL(invoice_msg: dict):
     browser.find_element(By.ID, "kprq").send_keys(invoice_msg["invoice_date"])
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "kjje")).click().perform()
     browser.find_element(By.ID, "kjje").send_keys(invoice_msg["invoice_verify"][-6:])
+    ActionChains(browser).move_to_element(browser.find_element(By.ID, "yzm")).click().perform()
 
     # 打码
     fix_yzm(browser)
 
-    # 进入iframe并截图
-    browser.switch_to.frame(browser.find_element(By.ID, "dialog-body"))
-    content = browser.find_element(By.ID, "content")
-    content.screenshot("test_screenshot.png")
+    # 提取发票截图及信息
+    get_fp(browser, invoice_msg)
 
 
 if __name__ == '__main__':
