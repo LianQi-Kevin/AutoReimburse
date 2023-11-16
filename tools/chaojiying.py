@@ -8,7 +8,7 @@ from tools.logging_utils import log_set
 from tools.utils import calculate_md5, image_to_base64
 
 IMG_DETECT_URL = "http://upload.chaojiying.net/Upload/Processing.php"
-WRONG_REPORT_URL = "http://upload.chaojiying.net/Upload/Report.php"
+WRONG_REPORT_URL = "http://upload.chaojiying.net/Upload/ReportError.php"
 SCORE_QUERY_URL = "http://upload.chaojiying.net/Upload/GetScore.php"
 # TYPE_ID = 1902    # 4-6位英文数字
 TYPE_ID = 5000    # 中英文数字自适应
@@ -61,11 +61,12 @@ def wrong_report(pic_id: str):
     headers = {"Content-Type": "application/json"}
     response = requests.request("POST", WRONG_REPORT_URL, headers=headers, data=body)
     response_data = json.loads(response.text)
-    logging.debug(f"response data: {response_data}")
+    logging.debug(f"wrong report response data: {response_data}")
 
 
 if __name__ == '__main__':
     log_set(logging.DEBUG)
-    img_detect(image_to_base64("../examples/verify_codes/black.png"))
-    img_detect(image_to_base64("../examples/verify_codes/black_write.png"))
-    get_score()
+    # img_detect(image_to_base64("../examples/verify_codes/black.png"))
+    # img_detect(image_to_base64("../examples/verify_codes/black_write.png"))
+    # get_score()
+    # wrong_report("1232217331230640082")

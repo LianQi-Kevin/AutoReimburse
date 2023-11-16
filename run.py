@@ -1,5 +1,7 @@
 import logging
 import time
+import re
+from copy import deepcopy
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -11,7 +13,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 from tools.QRcode_decode import decode_from_path
-from tools.chaojiying import img_detect
+from tools.chaojiying import img_detect, wrong_report
 from tools.logging_utils import log_set
 from tools.utils import base64_to_image_raw, image_raw_to_base64
 from tools.verify_code_tools import get_single_color
@@ -85,24 +87,53 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
     ActionChains(driver).move_to_element(driver.find_element(By.ID, "checkfp")).click().perform()
 
     # 处理验证码错误
-    while not check_element_exists(driver, "dialog-body", By.ID) and not check_element_exists(driver, "popup_container", By.ID):
+    while not check_element_exists(driver, "dialog-body", By.ID) and not check_element_exists(driver, "popup_container",
+                                                                                              By.ID):
         time.sleep(0.5)
     if check_element_exists(driver, "popup_message", By.ID):
-        logging.info(f"Error code: {driver.find_element(By.ID, 'popup_message').text}")
+        error_msg = driver.find_element(By.ID, 'popup_message').text
+        logging.info(f"Error code: {error_msg}")
+        # 回报验证码错误
+        if "验证码错误" in error_msg:
+            wrong_report(captcha_response["pic_id"])
         ActionChains(driver).move_to_element(driver.find_element(By.ID, "popup_ok")).click().perform()
         time.sleep(0.5)
         return fix_yzm(driver)
 
 
-def get_fp(driver: webdriver.Chrome, invoice_msg: dict):
+def get_fp(driver: webdriver.Chrome, invoice_msg: dict) -> dict:
     """提取发票验证页信息"""
-    # 进入iframe并截图
+    # 进入iframe
     driver.switch_to.frame(driver.find_element(By.ID, "dialog-body"))
-    content = driver.find_element(By.ID, "content")
+    with open("test.html", "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    # get info dict
+    info_dict = {
+        "code": int(invoice_msg["code"]),
+        "invoice_info": {
+            "type": int(invoice_msg["type"]),
+            "id": int(invoice_msg["id"]),
+            "money": float(invoice_msg["money"]),
+            "date": int(invoice_msg["date"]),
+            "verify": int(invoice_msg["verify"]),
+            "password": driver.find_element(By.ID, "password_dzfp").text,
+            "total": re.findall(r"\d+\.?\d*", driver.find_element(By.ID, "jshjxx_dzfp").text),
+        },
+        "verify_info": {
+            "machine_id": int(driver.find_element(By.ID, "sbbh_dzfp").text),
+            "buyer_name": driver.find_element(By.ID, "gfmc_gzfp").text,
+            "buyer_id": driver.find_element(By.ID, "gfsbh_dzfp").text,
+            "buyer_address": driver.find_element(By.ID, "gfdzdh_dzfp").text,
+            "buyer_account": driver.find_element(By.ID, "gfyhzh_dzfp").text,
+            "seller_name": driver.find_element(By.ID, "xfmc_dzfp").text,
+            "seller_id": driver.find_element(By.ID, "xfsbh_dzfp").text,
+            "seller_address": driver.find_element(By.ID, "xfdzdh_dzfp").text,
+            "seller_account": driver.find_element(By.ID, "xfyhzh_dzfp").text,
+            # "img_b64": driver.find_element(By.ID, "content").screenshot_as_base64
+        }
+    }
 
-    verify_res = content.screenshot_as_base64
-
-    # get other info
+    return info_dict
 
 
 def set_driver(headless_mode: bool = False, auto_detach: bool = False) -> webdriver.Chrome:
@@ -124,7 +155,7 @@ def set_driver(headless_mode: bool = False, auto_detach: bool = False) -> webdri
         'Chrome/109.0.5414.74 Safari/537.36')
     options.add_experimental_option('excludeSwitches', ['enable-automation'])
     if not auto_detach:
-        options.add_experimental_option("detach", True)   # 禁止进程结束后自动关闭浏览器
+        options.add_experimental_option("detach", True)  # 禁止进程结束后自动关闭浏览器
     options.add_experimental_option('useAutomationExtension', False)
     options.page_load_strategy = "normal"
     driver = webdriver.Chrome(options=options, service=ChromeService(ChromeDriverManager().install()))
@@ -145,20 +176,21 @@ def decode_URL(invoice_msg: dict):
     # 填充参数并获取验证码
     web_wait(browser, By.ID, "fpdm")
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "fpdm")).click().perform()
-    browser.find_element(By.ID, "fpdm").send_keys(invoice_msg["invoice_code"])
+    browser.find_element(By.ID, "fpdm").send_keys(invoice_msg["code"])
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "fphm")).click().perform()
-    browser.find_element(By.ID, "fphm").send_keys(invoice_msg["invoice_id"])
+    browser.find_element(By.ID, "fphm").send_keys(invoice_msg["id"])
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "kprq")).click().perform()
-    browser.find_element(By.ID, "kprq").send_keys(invoice_msg["invoice_date"])
+    browser.find_element(By.ID, "kprq").send_keys(invoice_msg["date"])
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "kjje")).click().perform()
-    browser.find_element(By.ID, "kjje").send_keys(invoice_msg["invoice_verify"][-6:])
+    browser.find_element(By.ID, "kjje").send_keys(invoice_msg["verify"][-6:])
     ActionChains(browser).move_to_element(browser.find_element(By.ID, "yzm")).click().perform()
 
     # 打码
     fix_yzm(browser)
 
     # 提取发票截图及信息
-    get_fp(browser, invoice_msg)
+    info_dict = get_fp(browser, invoice_msg)
+    print(info_dict)
 
 
 if __name__ == '__main__':
