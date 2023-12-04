@@ -1,4 +1,5 @@
 examples/
 .idea
+data
 
 test.py

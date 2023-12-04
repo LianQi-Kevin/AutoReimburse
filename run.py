@@ -1,7 +1,9 @@
+import json
 import logging
+import os
 import time
 import re
-from copy import deepcopy
+from urllib.parse import parse_qs, urlparse, urlunparse, urlencode
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -14,12 +16,59 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from tools.QRcode_decode import decode_from_path
 from tools.chaojiying import img_detect, wrong_report
+from tools.download import download_File
 from tools.logging_utils import log_set
 from tools.utils import base64_to_image_raw, image_raw_to_base64
 from tools.verify_code_tools import get_single_color
 
+from tools.retry_tools import task_retry
+
 BASE_URL = "https://inv-veri.chinatax.gov.cn/"
 OLD_YZM_B64 = ""
+
+
+def set_driver(headless_mode: bool = False, auto_detach: bool = False, download_path: str = None) -> webdriver.Chrome:
+    """
+    Set up the driver
+    :param download_path: if not None, change default download path
+    :param auto_detach: whether to automatically detach the driver
+    :param headless_mode: Whether to use headless mode
+    """
+    options = Options()
+    # 无头模式
+    if headless_mode:
+        logging.info("Use headless mode")
+        options.add_argument('headless')
+
+    # 进程结束自动关闭浏览器
+    if not auto_detach:
+        options.add_experimental_option("detach", True)
+
+    # 修改下载设置
+    if download_path is not None:
+        prefs = {'profile.default_content_settings.popups': 0,  # 防止保存弹窗
+                 'download.default_directory': download_path,  # 设置默认下载路径
+                 "profile.default_content_setting_values.automatic_downloads": 1  # 允许多文件下载
+                 }
+        options.add_experimental_option('prefs', prefs)
+
+    # 隐藏特征
+    options.add_argument('ignore-certificate-errors')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument(
+        'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/109.0.5414.74 Safari/537.36')
+    options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.page_load_strategy = "normal"
+    driver = webdriver.Chrome(options=options, service=ChromeService(ChromeDriverManager().install()))
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": """
+            Object.defineProperty(navigator, 'webdriver', {
+              get: () => undefined
+            })
+          """})
+    return driver
 
 
 def web_wait(driver: webdriver, by: str, element: str, until_sec: int = 20):
@@ -41,6 +90,21 @@ def check_element_exists(driver: webdriver.Chrome, element: str, find_model=By.C
         return False
 
 
+def add_tax_params(driver: webdriver.Chrome, invoice_msg: dict):
+    """add tax params"""
+    web_wait(driver, By.ID, "fpdm")
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "fpdm")).click().perform()
+    driver.find_element(By.ID, "fpdm").send_keys(invoice_msg["code"])
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "fphm")).click().perform()
+    driver.find_element(By.ID, "fphm").send_keys(invoice_msg["id"])
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "kprq")).click().perform()
+    driver.find_element(By.ID, "kprq").send_keys(invoice_msg["date"])
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "kjje")).click().perform()
+    driver.find_element(By.ID, "kjje").send_keys(invoice_msg["verify"][-6:])
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "yzm")).click().perform()
+
+
+@task_retry(max_retry_count=3, time_interval=2, max_timeout=15)
 def get_yzm_image_src(driver: webdriver.Chrome) -> str:
     """获取验证码图片"""
     logging.info("Start get yzm src")
@@ -103,13 +167,15 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
 
 def get_fp(driver: webdriver.Chrome, invoice_msg: dict) -> dict:
     """提取发票验证页信息"""
+    basename = f"{invoice_msg['id']}_{invoice_msg['date']}_{invoice_msg['money']}"
     # 进入iframe
     driver.switch_to.frame(driver.find_element(By.ID, "dialog-body"))
-    with open("test.html", "w", encoding="utf-8") as f:
+    os.makedirs("data/html", exist_ok=True)
+    with open(os.path.join("data/html", f"{basename}.html"), "w", encoding="utf-8") as f:
         f.write(driver.page_source)
     # get info dict
     info_dict = {
-        "code": int(invoice_msg["code"]),
+        "code": invoice_msg["code"],
         "invoice_info": {
             "type": int(invoice_msg["type"]),
             "id": int(invoice_msg["id"]),
@@ -117,11 +183,11 @@ def get_fp(driver: webdriver.Chrome, invoice_msg: dict) -> dict:
             "date": int(invoice_msg["date"]),
             "verify": int(invoice_msg["verify"]),
             "password": driver.find_element(By.ID, "password_dzfp").text,
-            "total": re.findall(r"\d+\.?\d*", driver.find_element(By.ID, "jshjxx_dzfp").text),
+            "total": float(re.findall(r"\d+\.?\d*", driver.find_element(By.ID, "jshjxx_dzfp").text)[0]),
         },
         "verify_info": {
             "machine_id": int(driver.find_element(By.ID, "sbbh_dzfp").text),
-            "buyer_name": driver.find_element(By.ID, "gfmc_gzfp").text,
+            "buyer_name": driver.find_element(By.ID, "gfmc_dzfp").text,
             "buyer_id": driver.find_element(By.ID, "gfsbh_dzfp").text,
             "buyer_address": driver.find_element(By.ID, "gfdzdh_dzfp").text,
             "buyer_account": driver.find_element(By.ID, "gfyhzh_dzfp").text,
@@ -129,73 +195,74 @@ def get_fp(driver: webdriver.Chrome, invoice_msg: dict) -> dict:
             "seller_id": driver.find_element(By.ID, "xfsbh_dzfp").text,
             "seller_address": driver.find_element(By.ID, "xfdzdh_dzfp").text,
             "seller_account": driver.find_element(By.ID, "xfyhzh_dzfp").text,
-            # "img_b64": driver.find_element(By.ID, "content").screenshot_as_base64
-        }
+            "img_b64": driver.find_element(By.ID, "content").screenshot_as_base64
+        },
+        "filename": f"{basename}.json"
     }
+
+    # todo: 待抽取具体税项
+    # find_elements(By.CSS, "#tabPage-dzfp table.fppy_table")[1: -2]
 
     return info_dict
 
 
-def set_driver(headless_mode: bool = False, auto_detach: bool = False) -> webdriver.Chrome:
-    """
-    Set up the driver
-    :param auto_detach: whether to automatically detach the driver
-    :param headless_mode: Whether to use headless mode
-    """
-    options = Options()
-    if headless_mode:
-        logging.info("Use headless mode")
-        options.add_argument('headless')
-    # 隐藏特征
-    options.add_argument('ignore-certificate-errors')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-gpu')
-    options.add_argument(
-        'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) '
-        'Chrome/109.0.5414.74 Safari/537.36')
-    options.add_experimental_option('excludeSwitches', ['enable-automation'])
-    if not auto_detach:
-        options.add_experimental_option("detach", True)  # 禁止进程结束后自动关闭浏览器
-    options.add_experimental_option('useAutomationExtension', False)
-    options.page_load_strategy = "normal"
-    driver = webdriver.Chrome(options=options, service=ChromeService(ChromeDriverManager().install()))
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {"source": """
-        Object.defineProperty(navigator, 'webdriver', {
-          get: () => undefined
-        })
-      """})
-    return driver
+def get_tax_url(driver: webdriver.Chrome) -> str:
+    """decode china.tax.gov.cn and get pdf url"""
+    params = urlparse(driver.current_url)
+    query = {
+        "action": "getDoc",
+        "code": parse_qs(params.query)["code"][0],
+        "type": 12
+    }
+    return urlunparse((params.scheme, params.netloc, '/api', '', urlencode(query), ''))
 
 
+def download_PDF(driver: webdriver.Chrome, filename: str):
+    """下载版式PDF"""
+    # 触发版式下载按钮
+    ActionChains(driver).move_to_element(driver.find_element(By.ID, "pdfDownNow")).click().perform()
+    # 获取所有窗口句柄
+    # base_handle = driver.current_window_handle
+    # 跳转到版式文件下载窗口并组装PDF下载地址
+    tax_url = None
+    for handle in driver.window_handles:
+        driver.switch_to.window(handle)
+        if driver.title == "版式文件下载":
+            tax_url = get_tax_url(driver)
+            break
+    # 下载
+    download_File(tax_url, filename)
+
+
+@task_retry(max_retry_count=3, time_interval=2, max_timeout=150)
 def decode_URL(invoice_msg: dict):
     logging.info(f"invoice_msg: {invoice_msg}")
     # open URL
-    browser = set_driver(False)
+    browser = set_driver(headless_mode=False, auto_detach=True)
     browser.get(BASE_URL)
+    browser.maximize_window()
 
     # 填充参数并获取验证码
-    web_wait(browser, By.ID, "fpdm")
-    ActionChains(browser).move_to_element(browser.find_element(By.ID, "fpdm")).click().perform()
-    browser.find_element(By.ID, "fpdm").send_keys(invoice_msg["code"])
-    ActionChains(browser).move_to_element(browser.find_element(By.ID, "fphm")).click().perform()
-    browser.find_element(By.ID, "fphm").send_keys(invoice_msg["id"])
-    ActionChains(browser).move_to_element(browser.find_element(By.ID, "kprq")).click().perform()
-    browser.find_element(By.ID, "kprq").send_keys(invoice_msg["date"])
-    ActionChains(browser).move_to_element(browser.find_element(By.ID, "kjje")).click().perform()
-    browser.find_element(By.ID, "kjje").send_keys(invoice_msg["verify"][-6:])
-    ActionChains(browser).move_to_element(browser.find_element(By.ID, "yzm")).click().perform()
+    add_tax_params(browser, invoice_msg)
 
     # 打码
     fix_yzm(browser)
 
     # 提取发票截图及信息
     info_dict = get_fp(browser, invoice_msg)
-    print(info_dict)
+    os.makedirs("data/json", exist_ok=True)
+    with open(os.path.join("data/json", info_dict["filename"]), mode="w", encoding="utf-8") as f:
+        json.dump(info_dict, f, sort_keys=True, indent=4)
+
+    # 下载版式PDF
+    download_PDF(browser, os.path.join("data/pdf", info_dict["filename"].replace(".json", ".pdf")))
 
 
 if __name__ == '__main__':
     log_set(logging.INFO)
 
     decode_URL(decode_from_path("examples/发票/")[2])
-    # for msg_dict in decode_from_path("examples/发票/"):
-    #     print(decode_URL(msg_dict))
+    # for index, msg_dict in enumerate(decode_from_path("examples/发票/")):
+    #     decode_URL(msg_dict)
+    #     if index >= 2:
+    #         break
