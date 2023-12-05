@@ -70,11 +70,3 @@ def get_single_color(color: str = "blue", img_raw: bytes = None, img_path: str =
     res = cv2.bitwise_and(img, img, mask=mask)
     cv2.cvtColor(res, cv2.COLOR_HSV2BGR)
     return cv2.imencode(".png", res)[1].tobytes()
-
-
-if __name__ == '__main__':
-    # with open("../examples/verify_codes/red_write2.png", "wb") as f:
-    #     f.write(delete_orphans(img_raw=get_single_color(color="red", img_path="../examples/verify_codes/red.png")))
-
-    with open("../examples/verify_codes/black_write.png", "wb") as f:
-        f.write(delete_orphans(img_raw=get_single_color(color="black", img_path="../examples/verify_codes/black.png"), fill_color=(255, 255, 255)))

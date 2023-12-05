@@ -3,8 +3,8 @@ import logging
 
 import requests
 
-from config import username, password, softid, softkey
-from tools.utils import calculate_md5
+from config_self import username, password, softid, softkey
+from tools.img_utils import calculate_md5
 
 IMG_DETECT_URL = "http://upload.chaojiying.net/Upload/Processing.php"
 WRONG_REPORT_URL = "http://upload.chaojiying.net/Upload/ReportError.php"
