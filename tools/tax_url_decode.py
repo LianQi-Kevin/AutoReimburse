@@ -214,16 +214,19 @@ def get_tax_url(driver: webdriver.Chrome) -> str:
 
 def download_PDF(driver: webdriver.Chrome, filename: str):
     """下载版式PDF"""
-    # 触发版式下载按钮
-    ActionChains(driver).move_to_element(driver.find_element(By.ID, "pdfDownNow")).click().perform()
-    # 获取所有窗口句柄
-    # base_handle = driver.current_window_handle
-    # 跳转到版式文件下载窗口并组装PDF下载地址
-    tax_url = None
-    for handle in driver.window_handles:
-        driver.switch_to.window(handle)
-        if driver.title == "版式文件下载":
-            tax_url = get_tax_url(driver)
-            break
-    # 下载
-    download_File(tax_url, filename)
+    if check_element_exists(driver, By.ID, "pdfDownNow"):
+        # 触发版式下载按钮
+        ActionChains(driver).move_to_element(driver.find_element(By.ID, "pdfDownNow")).click().perform()
+        # 获取所有窗口句柄
+        # base_handle = driver.current_window_handle
+        # 跳转到版式文件下载窗口并组装PDF下载地址
+        tax_url = None
+        for handle in driver.window_handles:
+            driver.switch_to.window(handle)
+            if driver.title == "版式文件下载":
+                tax_url = get_tax_url(driver)
+                break
+        # 下载
+        download_File(tax_url, filename)
+    else:
+        logging.error(f"{filename} 未找到版式下载按钮")
