@@ -3,7 +3,7 @@ import logging
 
 import requests
 
-from config_self import username, password, softid, softkey
+from config import username, password, softid, softkey
 from tools.img_utils import calculate_md5
 
 IMG_DETECT_URL = "http://upload.chaojiying.net/Upload/Processing.php"
