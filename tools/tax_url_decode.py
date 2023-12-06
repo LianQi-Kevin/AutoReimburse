@@ -160,13 +160,13 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
         return fix_yzm(driver)
 
 
-def get_fp_info(driver: webdriver.Chrome, invoice_msg: dict) -> dict:
+def get_fp_info(driver: webdriver.Chrome, invoice_msg: dict, html_cache_path: str = "data/html") -> dict:
     """提取发票验证页信息"""
     basename = f"{invoice_msg['id']}_{invoice_msg['date']}_{invoice_msg['money']}"
     # 进入iframe
     driver.switch_to.frame(driver.find_element(By.ID, "dialog-body"))
-    os.makedirs("data/html", exist_ok=True)
-    with open(os.path.join("data/html", f"{basename}.html"), "w", encoding="utf-8") as f:
+    os.makedirs(html_cache_path, exist_ok=True)
+    with open(os.path.join(html_cache_path, f"{basename}.html"), "w", encoding="utf-8") as f:
         f.write(driver.page_source)
     # get info dict
     info_dict = {

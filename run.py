@@ -12,6 +12,7 @@ BASE_URL = "https://inv-veri.chinatax.gov.cn/"
 
 @task_retry(max_retry_count=3, time_interval=2, max_timeout=150)
 def decode_URL(invoice_msg: dict):
+    """基于二维码识别的发票识别"""
     logging.info(f"invoice_msg: {invoice_msg}")
     # open URL
     browser = set_driver(headless_mode=False, auto_detach=True)
@@ -25,7 +26,7 @@ def decode_URL(invoice_msg: dict):
     fix_yzm(browser)
 
     # 提取发票截图及信息
-    info_dict = get_fp_info(browser, invoice_msg)
+    info_dict = get_fp_info(browser, invoice_msg, html_cache_path="data/html")
     os.makedirs("data/json", exist_ok=True)
     with open(os.path.join("data/json", info_dict["filename"]), mode="w", encoding="utf-8") as f:
         json.dump(info_dict, f, sort_keys=True, indent=4)
@@ -37,8 +38,8 @@ def decode_URL(invoice_msg: dict):
 if __name__ == '__main__':
     log_set(logging.INFO)
 
-    decode_URL(decode_from_path("examples/发票/")[2])
-    # for index, msg_dict in enumerate(decode_from_path("examples/发票/")):
-    #     decode_URL(msg_dict)
-    #     if index >= 2:
-    #         break
+    # decode_URL(decode_from_path("examples/发票/")[2])
+    for index, msg_dict in enumerate(decode_from_path("examples/发票/")):
+        decode_URL(msg_dict)
+        if index >= 2:
+            break

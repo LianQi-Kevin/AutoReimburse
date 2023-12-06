@@ -12,3 +12,6 @@ opencv-python~=4.8.1.78
 numpy
 requests
 clint
+
+# export excel
+openpyxl
