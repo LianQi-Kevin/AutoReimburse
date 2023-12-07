@@ -1,5 +1,5 @@
 # PDF reading
-Pillow
+Pillow~=10.1.0
 PyMuPDF==1.23.5
 pyzbar~=0.1.9
 
@@ -9,10 +9,10 @@ webdriver-manager~=4.0.1
 
 # verify-code preprocess
 opencv-python~=4.8.1.78
-numpy
-requests
-clint
+numpy~=1.24.4
+requests~=2.31.0
+clint~=0.5.1
 
 # export excel
-openpyxl
+openpyxl~=3.1.2
 python-docx
