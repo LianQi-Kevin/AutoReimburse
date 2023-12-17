@@ -1,0 +1,37 @@
+发票信息 invoice_info:
+	序号             auto_num		int
+	key 发票代码 	    code			int
+	发票类型 		    type			int
+	发票编号 		    id 				int
+	发票价格 		    money 			float
+	发票日期 		    date			int
+	发票验证码 		verify 			int
+	密码区 			password		str
+	计税合计 		    total			float
+	发票图片b64 		img_b64			str
+	
+查验信息	verify_info:
+	序号 auto_num					int
+	key 发票代码		code			int
+	机械编号 		    machine_id		int
+	买方名称 		    buyer_name		str
+	买方纳税人识别号 	buyer_id		str
+	买方地址、电话 	buyer_address	str
+	买方开户行及账号 	buyer_account	str
+	售方名称 		    seller_name		str
+	售方纳税人识别号 	seller_id		str
+	售方地址、电话 	seller_address	str
+	售方开户行及账号 	seller_account	str
+	发票查验结果b64	img_b64			str
+
+计税项目 tax_items:
+	序号 auto_num					int
+	key 发票代码		code			int
+	名称 			name 			str
+	型号				type			str
+	单位				unit 			str
+	数量				number 			int
+	单价				unit_price 		float
+	金额				money			float
+	税率				tax_rate		float
+	税额				tax 			float

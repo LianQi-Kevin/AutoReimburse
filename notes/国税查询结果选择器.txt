@@ -1,0 +1,17 @@
+机器编号：sbbh_dzfp
+购买方：
+	名称：gfmc_gzfp
+	纳税人识别号：gfsbh_dzfp
+	地址、电话：gfdzdh_dzfp
+	开户行及账号：gfyhzh_dzfp
+
+密码区：password_dzfp
+销售方：
+	名称：xfmc_dzfp
+	纳税人识别号：xfsbh_dzfp
+	地址、电话：xfdzdh_dzfp
+	开户行及账号：xfyhzh_dzfp
+
+税项：find_elements(By.CSS, "#tabPage-dzfp table.fppy_table")[1: -2]
+
+计税合计: jshjxx_dzfp
