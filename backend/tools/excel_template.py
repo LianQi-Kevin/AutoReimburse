@@ -11,7 +11,6 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Cm
 from openpyxl import load_workbook
-
 from tools.img_utils import base64_to_image_raw
 
 VOUCHER_INFO = {

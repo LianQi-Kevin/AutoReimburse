@@ -1,6 +1,6 @@
-import time
 import asyncio
 import functools
+import time
 from typing import Type
 
 

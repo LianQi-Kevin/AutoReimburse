@@ -2,7 +2,6 @@ import json
 import logging
 
 import requests
-
 from config import username, password, softid, softkey
 from tools.img_utils import calculate_md5
 
@@ -10,7 +9,7 @@ IMG_DETECT_URL = "http://upload.chaojiying.net/Upload/Processing.php"
 WRONG_REPORT_URL = "http://upload.chaojiying.net/Upload/ReportError.php"
 SCORE_QUERY_URL = "http://upload.chaojiying.net/Upload/GetScore.php"
 # TYPE_ID = 1902    # 4-6位英文数字
-TYPE_ID = 5000    # 中英文数字自适应
+TYPE_ID = 5000  # 中英文数字自适应
 
 
 def img_detect(img_b64: str):

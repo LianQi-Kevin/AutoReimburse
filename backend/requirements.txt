@@ -16,3 +16,6 @@ clint~=0.5.1
 # export excel
 openpyxl~=3.1.2
 python-docx
+
+# flask backend
+flask

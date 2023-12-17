@@ -1,6 +1,6 @@
-import os
-import hashlib
 import base64
+import hashlib
+import os
 
 
 def calculate_md5(input_str: str) -> str:
