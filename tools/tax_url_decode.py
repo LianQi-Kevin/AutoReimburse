@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -19,6 +20,7 @@ from tools.img_utils import base64_to_image_raw, image_raw_to_base64
 from tools.retry_tools import task_retry
 from tools.verify_code_tools import get_single_color
 
+BASE_URL = "https://inv-veri.chinatax.gov.cn/"
 OLD_YZM_B64 = ""
 
 
@@ -99,7 +101,6 @@ def add_tax_params(driver: webdriver.Chrome, invoice_msg: dict):
     ActionChains(driver).move_to_element(driver.find_element(By.ID, "yzm")).click().perform()
 
 
-@task_retry(max_retry_count=3, time_interval=2, max_timeout=15)
 def get_yzm_image_src(driver: webdriver.Chrome) -> str:
     """获取验证码图片"""
     logging.info("Start get yzm src")
@@ -160,7 +161,7 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
         return fix_yzm(driver)
 
 
-def get_fp_info(driver: webdriver.Chrome, invoice_msg: dict, html_cache_path: str = "data/html") -> dict:
+def get_fp_info(driver: webdriver.Chrome, invoice_msg: dict, html_cache_path: str = "cache/html") -> dict:
     """提取发票验证页信息"""
     basename = f"{invoice_msg['id']}_{invoice_msg['date']}_{invoice_msg['money']}"
     # 进入iframe
@@ -230,3 +231,28 @@ def download_PDF(driver: webdriver.Chrome, filename: str):
         download_File(tax_url, filename)
     else:
         logging.error(f"{filename} 未找到版式下载按钮")
+
+
+@task_retry(max_retry_count=3, time_interval=2, max_timeout=150)
+def get_verify_img(invoice_msg: dict, cache_path: str = "cache"):
+    """获取国税平台核验截图"""
+    logging.info(f"invoice_msg: {invoice_msg}")
+    # open URL
+    browser = set_driver(headless_mode=False, auto_detach=True)
+    browser.get(BASE_URL)
+    browser.maximize_window()
+
+    # 填充参数并获取验证码
+    add_tax_params(browser, invoice_msg)
+
+    # 打码
+    fix_yzm(browser)
+
+    # 提取发票截图及信息
+    info_dict = get_fp_info(browser, invoice_msg, html_cache_path=os.path.join(cache_path, "html"))
+    os.makedirs(os.path.join(cache_path, "json"), exist_ok=True)
+    with open(os.path.join(os.path.join(cache_path, "json"), info_dict["filename"]), mode="w", encoding="utf-8") as f:
+        json.dump(info_dict, f, sort_keys=True, indent=4)
+
+    # 下载版式PDF
+    # download_PDF(browser, os.path.join(os.path.join(cache_path, "pdf"), info_dict["filename"].replace(".json", ".pdf")))
