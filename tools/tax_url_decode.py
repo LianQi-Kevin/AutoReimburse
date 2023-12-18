@@ -5,6 +5,8 @@ import re
 import time
 from urllib.parse import parse_qs, urlparse, urlunparse, urlencode
 
+import cv2
+import numpy as np
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -14,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
+from tools.QRcode_decode import decode_single_path
 from tools.chaojiying import img_detect, wrong_report
 from tools.download import download_File
 from tools.img_utils import base64_to_image_raw, image_raw_to_base64
@@ -202,9 +205,9 @@ def get_fp_info(driver: webdriver.Chrome, invoice_msg: dict, html_cache_path: st
     return info_dict
 
 
-def get_tax_url(driver: webdriver.Chrome) -> str:
-    """decode china.tax.gov.cn and get pdf url"""
-    params = urlparse(driver.current_url)
+def get_tax_url(url: str) -> str:
+    """decode url and get pdf download url"""
+    params = urlparse(url)
     query = {
         "action": "getDoc",
         "code": parse_qs(params.query)["code"][0],
@@ -225,7 +228,7 @@ def download_PDF(driver: webdriver.Chrome, filename: str):
         for handle in driver.window_handles:
             driver.switch_to.window(handle)
             if driver.title == "版式文件下载":
-                tax_url = get_tax_url(driver)
+                tax_url = get_tax_url(driver.current_url)
                 break
         # 下载
         download_File(tax_url, filename)
@@ -256,3 +259,24 @@ def get_verify_img(invoice_msg: dict, cache_path: str = "cache"):
 
     # 下载版式PDF
     # download_PDF(browser, os.path.join(os.path.join(cache_path, "pdf"), info_dict["filename"].replace(".json", ".pdf")))
+
+
+def auto_tax_download(img_path: str, save_path: str):
+    """
+    读取国税电子发票单(小票截图)并下载对应pdf
+    """
+    with open(img_path, "rb") as f:
+        b64_img = image_raw_to_base64(f.read())
+    img = cv2.imdecode(np.frombuffer(base64_to_image_raw(b64_img), np.uint8), cv2.IMREAD_ANYCOLOR)
+    detector = cv2.wechat_qrcode_WeChatQRCode()
+    barcodes, _ = detector.detectAndDecode(img)
+    tax_url = get_tax_url(barcodes[0])
+    download_File(tax_url, save_path=save_path)
+
+
+def rename_tax_file(filepath: str, export_path: str = "./") -> str:
+    """解析发票文件并创建标准化输出路径"""
+    tax_info = decode_single_path(filepath)
+    export_filename = os.path.join(export_path,
+                                   f"{tax_info['date'][0:4]}.{tax_info['date'][4:6]}.{tax_info['date'][6:8]}-{tax_info['money']}.pdf")
+    return export_filename

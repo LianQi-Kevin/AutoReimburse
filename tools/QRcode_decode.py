@@ -12,6 +12,9 @@ TAX_TYPE = {
     "01": "增值税专用发票",
 }
 
+CV2_ALLOW = [".png", ".jpg", ".jpeg", ".jpe", ".jp2", ".bmp", ".dib", ".webp",
+             ".pbm", ".pgm", ".ppm", ".pxm", ".pnm", ".tif", ".tiff"]
+
 
 def PDF2PNG(pdf_path: str) -> bytes:
     """Convert PDF to PNG(raw)"""
@@ -26,22 +29,27 @@ def decode_QRcode(png_raw: bytes) -> str:
     cv2_img = cv2.imdecode(np.frombuffer(png_raw, np.uint8), cv2.IMREAD_ANYCOLOR)
     detector = cv2.wechat_qrcode_WeChatQRCode()
     barcodes, _ = detector.detectAndDecode(cv2_img)
-    return barcodes
+    return barcodes[0]
 
 
 def decode_single_path(decode_path: str) -> Dict[str, str]:
     """Decode QRcode in single file"""
-    if os.path.splitext(decode_path)[1] == ".pdf":
-        img_raw = PDF2PNG(decode_path)
-    else:
-        with open(decode_path, "rb") as f:
-            img_raw = f.read()
-    code_data = decode_QRcode(img_raw).split(",")
-    body = {"filename": os.path.basename(decode_path),
-            "type": TAX_TYPE[code_data[1]] if code_data[1] in ["10", "04", "01"] else "未知类型",
-            "code": code_data[2], "id": code_data[3], "money": code_data[4],
-            "date": code_data[5], "verify": code_data[6]}
-    return body
+    try:
+        if os.path.splitext(decode_path)[1] == ".pdf":
+            img_raw = PDF2PNG(decode_path)
+        elif os.path.splitext(decode_path)[1] in CV2_ALLOW:
+            with open(decode_path, "rb") as f:
+                img_raw = f.read()
+        else:
+            raise TypeError("Unsupported file type!")
+        code_data = decode_QRcode(img_raw).split(",")
+        body = {"filename": os.path.basename(decode_path),
+                "type": TAX_TYPE[code_data[1]] if code_data[1] in ["10", "04", "01"] else "未知类型",
+                "code": code_data[2], "id": code_data[3], "money": code_data[4],
+                "date": code_data[5], "verify": code_data[6]}
+        return body
+    except TypeError:
+        return {"filename": "", "type": "未知类型", "code": "", "id": "", "money": "", "date": "", "verify": ""}
 
 
 def decode_from_path(path: str) -> list:
