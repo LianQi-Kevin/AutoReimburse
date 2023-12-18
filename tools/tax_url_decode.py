@@ -12,12 +12,13 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
+
 from tools.chaojiying import img_detect, wrong_report
 from tools.download import download_File
 from tools.img_utils import base64_to_image_raw, image_raw_to_base64
 from tools.retry_tools import task_retry
 from tools.verify_code_tools import get_single_color
-from webdriver_manager.chrome import ChromeDriverManager
 
 BASE_URL = "https://inv-veri.chinatax.gov.cn/"
 OLD_YZM_B64 = ""

@@ -2,7 +2,9 @@ examples/
 .idea
 __pycache__
 data
+cache
 export
 config.py
 
 test.py
+log.log

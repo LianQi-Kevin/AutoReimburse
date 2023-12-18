@@ -2,6 +2,7 @@ import json
 import logging
 
 import requests
+
 from config import username, password, softid, softkey
 from tools.img_utils import calculate_md5
 
