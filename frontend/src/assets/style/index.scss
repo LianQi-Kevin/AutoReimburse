@@ -1,0 +1,206 @@
+@use "element-ui" as *;
+@use "@/assets/css/font-awesome.min.css" as *; //font 样式
+
+@media screen and (max-width: 990px) {
+  .el-message-box {
+    width: 300px !important;
+  }
+  .el-drawer{
+    width: 100%!important;
+  }
+  .el-dialog {
+    width: 90vw !important;
+    margin-top: 25vh !important;
+    .el-dialog__header {
+      padding: 8px !important;
+      .el-dialog__title {
+        font-size: 16px !important;
+      }
+      .el-dialog__headerbtn {
+        top: 0 !important;
+        width: 40px !important;
+        height: 40px !important;
+      }
+    }
+    .el-dialog__body {
+      font-size: 12px !important;
+      padding: 8px 24px 8px 0 !important;
+      max-height: 40vh !important;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+    .el-form-item__label {
+      padding: 0;
+    }
+    .el-dialog__footer {
+      padding: 8px 12px 8px 8px !important;
+    }
+  }
+  .el-form-item {
+    .el-form-item__label {
+      margin-bottom: 0 !important;
+    }
+  }
+  .main-content {
+    min-width: 300px !important;
+  }
+  .mobile {
+    width: 100% !important;
+    height: 100% !important;
+    position: relative;
+    top: 0;
+    .drawer-bg {
+      background: #000;
+      opacity: 0.3;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      position: absolute;
+      z-index: 999;
+    }
+    .sidebar-el-menu {
+      display: none;
+    }
+  }
+  .sidebar-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1001;
+  }
+}
+
+@mixin min-wid($width) {
+  // 最低宽度
+  min-width: $width;
+}
+@mixin max-wid($width) {
+  // 最大宽度
+  max-width: $width;
+}
+
+@mixin min-hei($height) {
+  // 最低高度
+  min-height: $height;
+}
+@mixin max-hei($height) {
+  // 最高高度
+  max-height: $height;
+}
+@mixin font-s($size) {
+  //字体大小
+  font-size: $size;
+}
+@mixin font-col($color) {
+  //字体颜色
+  color: $color;
+}
+
+@mixin abnormal {
+  //异常页面样式
+  @include max-hei(300px);
+}
+
+.abnormal-img {
+  //异常页面样式
+  // @include abnormal;
+  max-width: 600px;
+  width: 100%;
+  padding-top: calc(100vh - 85vh);
+}
+.abnormal-tip {
+  @include font-col(#909399);
+  @include font-s(17px);
+  padding: 0 0 24px 0;
+}
+
+#nprogress .bar {
+  //background: rgb(48, 92, 208) !important; // 加载进度条自定义颜色
+}
+
+#nprogress {
+  .bar {
+    z-index: 15031;
+  }
+
+  .spinner {
+    z-index: 15031;
+  }
+}
+
+/*全局滚动条样式*/
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  /* background-color: #01c8dc;
+border-radius: 3px; */
+  background-color: #b6b6b6;
+}
+/*全局滚动条样式结束*/
+.m-t16 {
+  margin-top: 16px;
+}
+.m-b8 {
+  margin-bottom: 8px;
+}
+.m-t8 {
+  margin-top: 8px;
+}
+.m-l8 {
+  margin-left: 8px;
+}
+
+.p-default {
+  padding: 24px;
+}
+
+.bg-default {
+  background-color: #f2f6fc;
+  width: calc(100vw - 800px);
+  font-size: 14px;
+  color: #000;
+}
+
+.t-l {
+  text-align: left;
+}
+
+.font-32 {
+  font-size: 32px;
+}
+
+.min-w600 {
+  min-width: 600px;
+}
+
+.min-h500 {
+  min-height: 500px;
+}
+
+.min-h350 {
+  min-height: 350px;
+}
+
+.default-h {
+  min-height: 500px;
+  height: calc(100vh - 175px);
+}
+
+.df-c {
+  display: flex;
+  align-items: center;
+}
+
+.fa {
+  vertical-align: middle;
+  margin-right: 5px;
+  width: 24px;
+  text-align: center;
+  font-size: 18px;
+  //color: #c0c4cc;
+  color: var(--af-default-font-color);
+}

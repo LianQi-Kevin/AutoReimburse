@@ -1,0 +1,19 @@
+//message
+.el-message {
+  background-color: #fff !important;
+  padding: 10px 24px !important;
+  align-items: center !important;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1) !important;
+  min-width: auto !important;
+  border-color: #ffffff !important;
+}
+
+//menu
+
+.el-menu {
+  border-right: none !important;
+  transition: width 0.3s ease-in-out;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
