@@ -1,13 +1,17 @@
+import glob
 import json
 import logging
 import os
 import re
 import time
+from typing import Dict
 from urllib.parse import parse_qs, urlparse, urlunparse, urlencode
 
 import cv2
 import numpy as np
-from selenium import webdriver
+from retrying import retry
+# from selenium import webdriver
+from seleniumwire import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.action_chains import ActionChains
@@ -20,8 +24,8 @@ from tools.QRcode_decode import decode_single_path
 from tools.chaojiying import img_detect, wrong_report
 from tools.download import download_File
 from tools.img_utils import base64_to_image_raw, image_raw_to_base64
-from tools.retry_tools import task_retry
-from tools.verify_code_tools import get_single_color
+from tools.timeout_killer import timeout
+# from tools.verify_code_tools import get_single_color
 
 BASE_URL = "https://inv-veri.chinatax.gov.cn/"
 OLD_YZM_B64 = ""
@@ -104,8 +108,13 @@ def add_tax_params(driver: webdriver.Chrome, invoice_msg: dict):
     ActionChains(driver).move_to_element(driver.find_element(By.ID, "yzm")).click().perform()
 
 
+@retry(stop_max_attempt_number=5, wait_random_min=1, wait_random_max=5)
+@timeout(15)
 def get_yzm_image_src(driver: webdriver.Chrome) -> str:
-    """获取验证码图片"""
+    """
+    获取验证码图片
+    todo: 仍存在较大错误，待重构该方法
+    """
     logging.info("Start get yzm src")
     global OLD_YZM_B64
     web_wait(driver, By.ID, "yzm_img")
@@ -128,6 +137,7 @@ def get_yzm_image_src(driver: webdriver.Chrome) -> str:
         return yzm_src.replace("data:image/png;base64,", "")
 
 
+@retry(stop_max_attempt_number=4, wait_random_min=1, wait_random_max=5, stop_max_delay=150)
 def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
     """验证码相关操作"""
     # 获取b64并提取color字段
@@ -137,7 +147,8 @@ def fix_yzm(driver: webdriver.Chrome, color: str = "black"):
         color = driver.find_element(By.CSS_SELECTOR, "#yzminfo > font").get_attribute("color")
 
     # 打码
-    captcha_response = img_detect(image_raw_to_base64(get_single_color(color, img_raw=base64_to_image_raw(yzm_b64))))
+    # captcha_response = img_detect(image_raw_to_base64(get_single_color(color, img_raw=base64_to_image_raw(yzm_b64))))
+    captcha_response = img_detect(yzm_b64)
     logging.info(f"验证码识别结果: {captcha_response}")
 
     # 填充并提交
@@ -236,7 +247,9 @@ def download_PDF(driver: webdriver.Chrome, filename: str):
         logging.error(f"{filename} 未找到版式下载按钮")
 
 
-@task_retry(max_retry_count=3, time_interval=2, max_timeout=150)
+# @task_retry(max_retry_count=3, time_interval=2, max_timeout=150)
+@retry(stop_max_attempt_number=4, wait_random_min=1, wait_random_max=5)
+@timeout(80)
 def get_verify_img(invoice_msg: dict, cache_path: str = "cache"):
     """获取国税平台核验截图"""
     logging.info(f"invoice_msg: {invoice_msg}")
@@ -258,7 +271,7 @@ def get_verify_img(invoice_msg: dict, cache_path: str = "cache"):
         json.dump(info_dict, f, sort_keys=True, indent=4)
 
     # 下载版式PDF
-    # download_PDF(browser, os.path.join(os.path.join(cache_path, "pdf"), info_dict["filename"].replace(".json", ".pdf")))
+    download_PDF(browser, os.path.join(os.path.join(cache_path, "pdf"), info_dict["filename"].replace(".json", ".pdf")))
 
 
 def auto_tax_download(img_path: str, save_path: str):
@@ -274,9 +287,18 @@ def auto_tax_download(img_path: str, save_path: str):
     download_File(tax_url, save_path=save_path)
 
 
-def rename_tax_file(filepath: str, export_path: str = "./") -> str:
+def get_standard_tax_filename(filepath: str, export_path: str = "./") -> str:
     """解析发票文件并创建标准化输出路径"""
     tax_info = decode_single_path(filepath)
     export_filename = os.path.join(export_path,
                                    f"{tax_info['date'][0:4]}.{tax_info['date'][4:6]}.{tax_info['date'][6:8]}-{tax_info['money']}.pdf")
     return export_filename
+
+
+def verify_info_exits(info_dict: Dict[str, str], cache_path: str = "cache") -> bool:
+    """校验待检测信息是否已缓存"""
+    key_lst = []
+    if os.path.exists(os.path.join(cache_path, "json")):
+        key_lst = [{"id": os.path.basename(filename).split("_")[0]} for filename in
+                   glob.glob(os.path.join(cache_path, "json", "*.json"))]
+    return {"id": info_dict["id"]} in key_lst

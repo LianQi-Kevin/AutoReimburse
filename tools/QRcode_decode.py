@@ -44,12 +44,13 @@ def decode_single_path(decode_path: str) -> Dict[str, str]:
             raise TypeError("Unsupported file type!")
         code_data = decode_QRcode(img_raw).split(",")
         body = {"filename": os.path.basename(decode_path),
-                "type": TAX_TYPE[code_data[1]] if code_data[1] in ["10", "04", "01"] else "未知类型",
+                "type": code_data[1],
+                "type_zh": TAX_TYPE[code_data[1]] if code_data[1] in ["10", "04", "01"] else "未知类型",
                 "code": code_data[2], "id": code_data[3], "money": code_data[4],
                 "date": code_data[5], "verify": code_data[6]}
         return body
     except TypeError:
-        return {"filename": "", "type": "未知类型", "code": "", "id": "", "money": "", "date": "", "verify": ""}
+        return {"filename": "", "type": "", "type_zh": "未知类型", "code": "", "id": "", "money": "", "date": "", "verify": ""}
 
 
 def decode_from_path(path: str) -> list:
@@ -58,7 +59,7 @@ def decode_from_path(path: str) -> list:
     """
     result = []
     # decode PDF QRcode
-    for decode_path in glob.glob(os.path.join(path, "*[pdf, png, jpg, jpeg]")):
+    for decode_path in glob.glob(os.path.join(path, f"*{['.pdf'] + CV2_ALLOW}")):
         result.append(decode_single_path(decode_path))
     return result
 

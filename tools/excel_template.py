@@ -31,7 +31,7 @@ def makedir(path: str):
 
 
 def __json_read(json_path: str = "../data/json/*.json", sample_num: int = 20) -> list:
-    """读取发票信息json文件"""
+    """随机获取sample_num个发票信息json文件, 函数仅供调试用"""
     invoice_list = []
     for json_path in glob.glob(json_path):
         with open(json_path, "r", encoding="utf-8") as f:
